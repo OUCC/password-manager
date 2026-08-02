@@ -1,3 +1,3 @@
 BasedOnStyle: Google
 ColumnLimit: 120
-DerivePointerAlignment: true
+PointerAlignment: Right

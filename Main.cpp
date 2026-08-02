@@ -9,14 +9,14 @@ Array<single_data> passArray;  // パスワードの三項目をセットにし�
 // ログインシーン
 class Login : public App::Scene {
  private:
-  Font* font;
+  Font *font;
   TextEditState tes;
   Vec2 *center;
   Size screenSize;
-  ColorF* buttonColor;
-  Circle* button;
-  Transition* press;
-  String text = U"Welcome", initWarmText = U"", key_db_name = U"key.dat", main_db_name = U"main.dat";
+  ColorF *buttonColor;
+  Circle *button;
+  Transition *press;
+  String text = U"Welcome", initWarmText = U"";
   bool retReset = false, isReset = false;
 
   Vec2 ratioPos(double x, double y) { return Vec2(screenSize.x * x, screenSize.y * y); }
@@ -31,15 +31,13 @@ class Login : public App::Scene {
   }
 
  public:
-  Login(const InitData& init) : IScene(init) {  // コンストラクタ（必ず実装）
+  Login(const InitData &init) : IScene(init) {  // コンストラクタ（必ず実装）
     font = new Font(60, Typeface::Bold);
     center = new Vec2(400, 70);
     buttonColor = new ColorF(1.0, 90.0, 205.0, 0.5);
     button = new Circle(700, 400, 20);
     press = new Transition(0.05s, 0.05s);
     FontAsset::Register(U"Regular", 20);
-    if (!Database.is_registered()) changeScene(U"CreatePassword", -20.0s);  // パスワード作成シーンに遷移
-
     Scene::SetBackground(Color(106, 90, 205, 1));
   }
 
@@ -51,8 +49,8 @@ class Login : public App::Scene {
     delete press;
   }
 
-  void update() override {                                          // 更新関数
-    if (!Database.is_registered()) changeScene(U"CreatePassword");  // パスワード作成シーンに遷移
+  void update() override {                                                 // 更新関数
+    if (!Database.is_registered()) changeScene(U"CreatePassword", 0.25s);  // パスワード作成シーンに遷移
 
     screenSize = Window::GetState().virtualSize;
     button->center = ratioPosFromCenter(max(0.75, 375. / screenSize.x), -0.3333333);
@@ -71,8 +69,10 @@ class Login : public App::Scene {
     (*font)(text).drawAt(*center);
     SimpleGUI::TextBoxAt(tes, ratioPosFromCenter(min(-0.188, 137.824 / screenSize.x), -0.46),
                          max(135.0, screenSize.x * 0.3125), 64, !retReset);
-    if (SimpleGUI::ButtonAt(U"Clear", ratioPosFromCenter(max(0.3, 240. / screenSize.x), -0.46), 100, !retReset))
+    if (SimpleGUI::ButtonAt(U"Clear", ratioPosFromCenter(max(0.3, 240. / screenSize.x), -0.46), 100, !retReset)) {
       tes.clear();
+    }
+    tes.active = true;
     if ((button->leftClicked() || KeyEnter.down()) && !retReset) {
       int cnt = 0;
       bool valid = true;
@@ -84,19 +84,24 @@ class Login : public App::Scene {
           break;
         }
       }
-      if (!valid || !cnt)
+      if (!valid || !cnt) {
         text = U"Invalid Password.";
-      else if (Database.login(tes.text))
-        changeScene(U"MainScene", 1.0s);  // メインシーンに 1 秒かけて遷移
-      else
-        text = U"Wrong Password.";
+      } else {
+        try {
+          passArray = Database.read_data(tes.text);
+          changeScene(U"MainScene", 0.25s);
+        } catch (Error e) {
+          text = e.what();
+        }
+      }
     }
 
     /// <summary>パスワードリセット</summary>
     if (SimpleGUI::ButtonAt(U"初期化", ratioPosFromCenter(-0.87, -0.93), 100, !retReset)) retReset = true;
     RectF(Vec2(0, 0), screenSize).draw(ColorF(Palette::Black, retReset ? 0.5 : 0.0));
     if (retReset) {
-      RectF(Arg::center(ratioPosFromCenter(0, 0)), ratioPos(max(0.7, 420. / screenSize.x), max(0.5, 250. / screenSize.y)))
+      RectF(Arg::center(ratioPosFromCenter(0, 0)),
+            ratioPos(max(0.7, 420. / screenSize.x), max(0.5, 250. / screenSize.y)))
           .draw(ColorF(0.8, 0, 0, 1.0));
       initWarmText = U"警告";
       (*font)(initWarmText).drawAt(ratioPosFromCenter(0.0, max(0.3, 150. / screenSize.y)), ColorF(1, 1, 1, 1));
@@ -115,10 +120,7 @@ class Login : public App::Scene {
       }
       if (isReset) {
         initWarmText = U"";
-        if (Database.reset())
-          text = U"初期化成功";
-        else
-          text = U"初期化失敗";
+        text = Database.reset() ? U"初期化成功" : U"初期化失敗";
         isReset = false;
         retReset = false;
       }
@@ -132,11 +134,11 @@ class Login : public App::Scene {
 // パスワード作成シーン
 class CreatePassword : public App::Scene {
  private:
-  ColorF* buttonColor1;
-  Circle* button1;
-  Transition* press;
-  Font* font1;
-  TextEditState tes1, tes2;
+  ColorF *buttonColor1;
+  Circle *button1;
+  Transition *press;
+  Font *font1;
+  TextEditState tes1;
   Size screenSize;
   String text = U"Please create your password.";
 
@@ -150,7 +152,7 @@ class CreatePassword : public App::Scene {
   }
 
  public:
-  CreatePassword(const InitData& init) : IScene(init) {  // コンストラクタ（必ず実装
+  CreatePassword(const InitData &init) : IScene(init) {  // コンストラクタ（必ず実装
     buttonColor1 = new ColorF(245, 245, 245, 1);
     button1 = new Circle(760, 560, 19);
     press = new Transition(0.05s, 0.05s);
@@ -174,13 +176,7 @@ class CreatePassword : public App::Scene {
     (*font1)(text.substr(0, length))
         .drawAt(Scene::Center(), Color(41, 26, 33));  // text の文字数以上の length は切り捨てられる
     SimpleGUI::TextBoxAt(tes1, ratioPosFromCenter(0.0, min(-0.2, -80. / screenSize.y)), 250, 64);
-    if (Database.is_registered()) {
-      FontAsset(U"Regular")(U"Old:").drawAt(ratioPosFromCenter(-365 / screenSize.x, min(-0.2, -80. / screenSize.y)),
-                                            ColorF(1, 1, 1, 1));
-      SimpleGUI::TextBoxAt(tes2, ratioPosFromCenter(0.0, min(-0.4, -160. / screenSize.y)), 250, 64);
-      FontAsset(U"Regular")(U"New:").drawAt(ratioPosFromCenter(-365 / screenSize.x, min(-0.4, -160. / screenSize.y)),
-                                            ColorF(1, 1, 1, 1));
-    }
+    tes1.active = true;
 
     const bool mouseOver = (*button1).mouseOver();
     if (mouseOver) Cursor::RequestStyle(CursorStyle::Hand);  // マウスカーソルを手の形に
@@ -192,42 +188,34 @@ class CreatePassword : public App::Scene {
         .draw(*buttonColor1);
 
     if (button1->leftClicked()) {
-      int cnt = 0, cnt_tes2 = 0;
-      bool valid = true, valid_tes2 = true;
+      int cnt = 0;
+      bool valid = true;
+
       for (char32_t var : tes1.text) {
-        if (U'!' <= var && var <= U'~')
+        if (U'!' <= var && var <= U'~') {
           cnt++;
-        else {
+        } else {
           valid = false;
           break;
         }
       }
-      if (Database.is_registered()) {
-        for (char32_t var2 : tes2.text) {
-          if (U'!' <= var2 && var2 <= U'~')
-            cnt_tes2++;
-          else {
-            valid_tes2 = false;
-            break;
-          }
-        }
-        if (valid && cnt && valid_tes2 && cnt_tes2) {
-          if (Database.change_passwd(tes1.text, tes2.text))
-            changeScene(U"MainScene", 1.0s);  // メインシーンに 1 秒かけて遷移
-          else
-            text = U"Failed to change the manager password.";
-        } else
-          text = U"Invalid Password.";
-      } else if (valid && cnt) {
-        Database.register_passwd(tes1.text);
-        changeScene(U"MainScene", 1.0s);  // メインシーンに 1 秒かけて遷移
-      } else
+
+      if (!valid || !cnt) {
         text = U"Invalid Password.";
+      } else if (Database.is_registered()) {
+        if (Database.change_passwd(tes1.text)) {
+          changeScene(U"MainScene", 0.25s);
+        } else {
+          text = U"Failed to change the manager password.";
+        }
+      } else {
+        Database.register_passwd(tes1.text);
+        changeScene(U"MainScene", 0.25s);
+      }
     }
   }
 
-  void draw() const override {  // 描画関数 (const 修飾)
-  }
+  void draw() const override {}  // 描画関数 (const 修飾)
 };
 
 // メインシーン
@@ -292,7 +280,7 @@ class MainScene : public App::Scene {
   }
 
  public:
-  MainScene(const InitData& init) : IScene(init) {
+  MainScene(const InitData &init) : IScene(init) {
     Scene::SetBackground(Design::background);
 
     // 通常表示用フォントアセット
@@ -304,8 +292,6 @@ class MainScene : public App::Scene {
     TextureAsset::Register(U"delete", U"images/delete.png");
     TextureAsset::Register(U"visible", U"images/visible.png");
     TextureAsset::Register(U"invisible", U"images/invisible.png");
-
-    passArray = Database.read_data();
   }
 
   // 更新関数
@@ -449,7 +435,8 @@ class MainScene : public App::Scene {
             popupState = notPopup;
         } else {
           // 再確認
-          RectF(ratioPosFromCenter(0.0, 0.4), ratioPos(0.33, max(0.4, 240. / screenSize.y))).drawFrame(5, Design::frame);
+          RectF(ratioPosFromCenter(0.0, 0.4), ratioPos(0.33, max(0.4, 240. / screenSize.y)))
+              .drawFrame(5, Design::frame);
           FontAsset(U"Regular")(U"この内容で確定しますか？").draw(repopCheckTextCullBox, Design::fontColor);
           if (SimpleGUI::ButtonAt(U"はい", ratioPosFromCenter(0.18 + (screenSize.x >= 500 ? 0.0 : 0.16), -0.22), 80)) {
             single_data temp(serviceNameText.text, userNameText.text, passwordText.text);
@@ -461,7 +448,12 @@ class MainScene : public App::Scene {
               passArray[popupIndex] = temp;
               noticeType = notice_edit;
             }
-            Database.write_data(passArray);
+
+            try {
+              Database.write_data(passArray);
+            } catch (Error e) {
+              System::MessageBoxOK(e.what());
+            }
             popupState = notPopup;
             noticeTimer = 0.0;
           }
@@ -483,13 +475,21 @@ class MainScene : public App::Scene {
         if (SimpleGUI::Button(U"はい", ratioPos(0.5, 0.55) - Vec2(100, 0), 80)) {
           if (popupState == forMngPsswrdChange) {
             popupState = notPopup;
-            changeScene(U"CreatePassword");
+            changeScene(U"CreatePassword", 0.25s);
           } else {
             // Array passArrayのインデックスは popupIndex
             for (int j = popupIndex; j < passArray.size() - 1; j++)
               passArray[j] = passArray[j + 1];  // パスワードの削除処理
             passArray.pop_back();
-            Database.write_data(passArray);
+            if (passArray.empty()) {
+              if (!Database.reset()) System::MessageBoxOK(U"Failed to open the password file.");
+            } else {
+              try {
+                Database.write_data(passArray);
+              } catch (Error e) {
+                System::MessageBoxOK(e.what());
+              }
+            }
             popupState = notPopup;
             noticeType = notice_delete;
             noticeTimer = 0.0;
@@ -526,25 +526,13 @@ class MainScene : public App::Scene {
   void draw() const override {}
 };
 
-void kowerkoint_dbg() {
-  db database;
-  // database.register_passwd(U"abc");
-  Print << database.login(U"abc");
-  // Print << database.login(U"vim");
-  // Print << database.login(U"emacs");
-  Array<single_data> data = database.read_data();
-  for (int i = 0; i < data.size(); i++) Print << data[i].password;
-  data << single_data(U"サービス2", U"あいうえお", U"applebananachocolatecookie!^as~\"\\e!&");
-  // data << single_data(U"サービス", U"ユーザー", U"123456789");
-  database.write_data(data);
-}
-
 void Main() {
   App manager;                                     // シーンマネージャーを作成
   manager.add<Login>(U"Login");                    // ログインシーン（名前は U"Login"）を登録
   manager.add<CreatePassword>(U"CreatePassword");  // パスワード作成シーン（名前は U"CreatePassword"）を登録
   manager.add<MainScene>(U"MainScene");            // メインシーン（名前は U"MainScene"）を登録
-  manager.setFadeColor(Palette::Skyblue);          // フェードイン・フェードアウト時の画面の色
+  manager.init(U"Login", 0.25s);
+  manager.setFadeColor(Palette::Skyblue);  // フェードイン・フェードアウト時の画面の色
   Window::SetStyle(WindowStyle::Sizable);
   Window::SetTitle(U"Password Manager");
   System::SetTerminationTriggers(UserAction::CloseButtonClicked);

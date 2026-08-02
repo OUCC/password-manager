@@ -109,7 +109,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a0421e23600a1802f95527e1c233a671e"><td class="mdescLeft">&#160;</td><td class="mdescRight">PWマネージャーのパスワードを登録する @detail ログイン処理も行われる  <a href="classdb.html#a0421e23600a1802f95527e1c233a671e">More...</a><br /></td></tr>
 <tr class="separator:a0421e23600a1802f95527e1c233a671e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af8db8c887e8d3ca0c23ebca2f6399363"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdb.html#af8db8c887e8d3ca0c23ebca2f6399363">change_passwd</a> (String old_passwd, String new_passwd)</td></tr>
-<tr class="memdesc:af8db8c887e8d3ca0c23ebca2f6399363"><td class="mdescLeft">&#160;</td><td class="mdescRight">PWマネージャーのパスワードを変更する @detail DBの中身の暗号も新しい暗号のものに書き換わり、以降のread_data()、write_data()は新しいパスワードでの暗号化/復号化化がなされます ログインも済んだことになります(ログイン済みの状態で呼び出すことが想定されますが…)  <a href="classdb.html#af8db8c887e8d3ca0c23ebca2f6399363">More...</a><br /></td></tr>
+<tr class="memdesc:af8db8c887e8d3ca0c23ebca2f6399363"><td class="mdescLeft">&#160;</td><td class="mdescRight">PWマネージャーのパスワードを変更する @detail DBの中身の暗号も新しい暗号のものに書き換わり、以降のread_data()、write_data()は新しいパスワードでの暗号化/復号がなされます ログインも済んだことになります(ログイン済みの状態で呼び出すことが想定されますが…)  <a href="classdb.html#af8db8c887e8d3ca0c23ebca2f6399363">More...</a><br /></td></tr>
 <tr class="separator:af8db8c887e8d3ca0c23ebca2f6399363"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a359f57f1d20aadc602b3bd1e773a7859"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classdb.html#a359f57f1d20aadc602b3bd1e773a7859">login</a> (String passwd)</td></tr>
 <tr class="memdesc:a359f57f1d20aadc602b3bd1e773a7859"><td class="mdescLeft">&#160;</td><td class="mdescRight">PWマネージャーにログインする  <a href="classdb.html#a359f57f1d20aadc602b3bd1e773a7859">More...</a><br /></td></tr>
@@ -207,7 +207,7 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>PWマネージャーのパスワードを変更する @detail DBの中身の暗号も新しい暗号のものに書き換わり、以降のread_data()、write_data()は新しいパスワードでの暗号化/復号化化がなされます ログインも済んだことになります(ログイン済みの状態で呼び出すことが想定されますが…) </p>
+<p>PWマネージャーのパスワードを変更する @detail DBの中身の暗号も新しい暗号のものに書き換わり、以降のread_data()、write_data()は新しいパスワードでの暗号化/復号がなされます ログインも済んだことになります(ログイン済みの状態で呼び出すことが想定されますが…) </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">old_passwd</td><td>変更前のパスワード </td></tr>
@@ -360,7 +360,7 @@ false パスワードが間違っていてログインに失敗した場合 </dd
 </div><div class="memdoc">
 
 <p>データを読み込む </p>
-<p>バイナリファイルから読み出され、復号化された状態で出てくる</p>
+<p>バイナリファイルから読み出され、復号された状態で出てくる</p>
 <dl class="section return"><dt>Returns</dt><dd>Array&lt;single_data&gt; 読み込んだデータ(データがまだ作られていない場合長さ0のArray) </dd></dl>
 <dl class="exception"><dt>Exceptions</dt><dd>
   <table class="exception">

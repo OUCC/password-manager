@@ -21,7 +21,7 @@ bool \mbox{\hyperlink{classdb_acff925896188a6a78e4f9fbe567f4d01}{is\+\_\+logined
 void \mbox{\hyperlink{classdb_a0421e23600a1802f95527e1c233a671e}{register\+\_\+passwd}} (String passwd)
 \begin{DoxyCompactList}\small\item\em PWマネージャーのパスワードを登録する @detail ログイン処理も行われる \end{DoxyCompactList}\item 
 bool \mbox{\hyperlink{classdb_af8db8c887e8d3ca0c23ebca2f6399363}{change\+\_\+passwd}} (String old\+\_\+passwd, String new\+\_\+passwd)
-\begin{DoxyCompactList}\small\item\em PWマネージャーのパスワードを変更する @detail DBの中身の暗号も新しい暗号のものに書き換わり、以降のread\+\_\+data()、write\+\_\+data()は新しいパスワードでの暗号化/復号化化がなされます ログインも済んだことになります(ログイン済みの状態で呼び出すことが想定されますが…) \end{DoxyCompactList}\item 
+\begin{DoxyCompactList}\small\item\em PWマネージャーのパスワードを変更する @detail DBの中身の暗号も新しい暗号のものに書き換わり、以降のread\+\_\+data()、write\+\_\+data()は新しいパスワードでの暗号化/復号がなされます ログインも済んだことになります(ログイン済みの状態で呼び出すことが想定されますが…) \end{DoxyCompactList}\item 
 bool \mbox{\hyperlink{classdb_a359f57f1d20aadc602b3bd1e773a7859}{login}} (String passwd)
 \begin{DoxyCompactList}\small\item\em PWマネージャーにログインする \end{DoxyCompactList}\item 
 Array$<$ \mbox{\hyperlink{classsingle__data}{single\+\_\+data}} $>$ \mbox{\hyperlink{classdb_a26fd9bac41fb7235130235951f2e22ae}{read\+\_\+data}} ()
@@ -64,7 +64,7 @@ dbのコンストラクタ
 
 
 
-PWマネージャーのパスワードを変更する @detail DBの中身の暗号も新しい暗号のものに書き換わり、以降のread\+\_\+data()、write\+\_\+data()は新しいパスワードでの暗号化/復号化化がなされます ログインも済んだことになります(ログイン済みの状態で呼び出すことが想定されますが…) 
+PWマネージャーのパスワードを変更する @detail DBの中身の暗号も新しい暗号のものに書き換わり、以降のread\+\_\+data()、write\+\_\+data()は新しいパスワードでの暗号化/復号がなされます ログインも済んだことになります(ログイン済みの状態で呼び出すことが想定されますが…) 
 
 
 \begin{DoxyParams}{Parameters}
@@ -153,7 +153,7 @@ false パスワードが間違っていてログインに失敗した場合
 
 データを読み込む 
 
-バイナリファイルから読み出され、復号化された状態で出てくる
+バイナリファイルから読み出され、復号された状態で出てくる
 
 \begin{DoxyReturn}{Returns}
 Array$<$single\+\_\+data$>$ 読み込んだデータ(データがまだ作られていない場合長さ0の\+Array) 
