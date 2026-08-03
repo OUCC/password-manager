@@ -85,12 +85,12 @@ class Login : public App::Scene {
         }
       }
       if (!valid || !cnt) {
-        text = U"Invalid Password.";
+        text = U"Invalid password";
       } else {
         try {
           passArray = Database.read_data(tes.text);
           changeScene(U"MainScene", 0.25s);
-        } catch (Error e) {
+        } catch (Error &e) {
           text = e.what();
         }
       }
@@ -213,6 +213,8 @@ class CreatePassword : public App::Scene {
         changeScene(U"MainScene", 0.25s);
       }
     }
+
+    if (KeyEscape.down() && Database.is_registered()) changeScene(U"MainScene", 0.25s);
   }
 
   void draw() const override {}  // 描画関数 (const 修飾)
@@ -230,12 +232,10 @@ class MainScene : public App::Scene {
     notPopup,
     forAdd,
     forEdit,
-    confirming,
     forDelete,
     forMngPsswrdChange,
   };
   PopupState popupState = notPopup;
-  PopupState lastPopupState;
 
   // デザイン用定数
   struct Design {
@@ -257,6 +257,7 @@ class MainScene : public App::Scene {
 
   // テキストボックス用
   TextEditState serviceNameText, userNameText, passwordText;
+  TextEditState *focused = &serviceNameText, *nextFocus = &userNameText;
 
   // 完了通知用
   double noticeTimer = 5.0;
@@ -296,8 +297,6 @@ class MainScene : public App::Scene {
 
   // 更新関数
   void update() override {
-    int cnt = 0;
-
     ClearPrint();
     noticeTimer += Scene::DeltaTime();
     screenSize = Window::GetState().virtualSize;
@@ -358,7 +357,7 @@ class MainScene : public App::Scene {
       popupState = forMngPsswrdChange;
 
     for (int i = 0; i < scroll.max; i++) {
-      if (scroll.current + i >= passArray.size()) break;
+      if ((size_t)(scroll.current + i) >= passArray.size()) break;
       int height = 50 + 50 * i;
       RectF serviceNameTextCullBox(70, height, min(0.3 * (screenSize.x - 200), screenSize.x - 160 - 70.), 50);
       RectF userNameTextCullBox(0.35 * screenSize.x, height,
@@ -405,63 +404,66 @@ class MainScene : public App::Scene {
     switch (popupState) {
       case forAdd:
       case forEdit:
-      case confirming:
         RectF(Arg::center(ratioPosFromCenter(0.0, 0.0)), ratioPosFromCenter(0.7, min(-0.5, -350. / screenSize.y)))
             .draw(Design::background);
 
+        if (serviceNameText.active) {
+          focused = &serviceNameText;
+          nextFocus = &userNameText;
+        } else if (userNameText.active) {
+          focused = &userNameText;
+          nextFocus = &passwordText;
+        } else if (passwordText.active) {
+          focused = &passwordText;
+          nextFocus = &serviceNameText;
+        } else {
+          if (focused->tabKey) focused = nextFocus;
+          focused->active = true;
+        }
         FontAsset(U"Regular")(U"サービス名").draw(popupServiceNameHeadCullBox, Design::fontColor);
         SimpleGUI::TextBox(serviceNameText, ratioPosFromCenter(-0.6, max(0.3, 180. / screenSize.y)), screenSize.x / 4,
-                           unspecified, popupState != confirming);
+                           unspecified);
         FontAsset(U"Regular")(U"ユーザー名").draw(popupUserNameHeadCullBox, Design::fontColor);
         SimpleGUI::TextBox(userNameText, ratioPosFromCenter(-0.6, max(0.06, 36. / screenSize.y)), screenSize.x / 4,
-                           unspecified, popupState != confirming);
+                           unspecified);
         FontAsset(U"Regular")(U"パスワード").draw(popupPasswordHeadCullBox, Design::fontColor);
         SimpleGUI::TextBox(passwordText, ratioPosFromCenter(-0.6, min(-0.18, -108. / screenSize.y)), screenSize.x / 4,
-                           unspecified, popupState != confirming);
+                           unspecified);
+        FontAsset(U"Regular")(popupState == forAdd ? U"パスワードの追加" : U"パスワードの変更")
+            .draw(popupAddChangePasswordHeadCullBox, Design::fontColor);
 
-        cnt = passwordText.text.length();
-        if (popupState != confirming || !cnt) {
-          FontAsset(U"Regular")(popupState == forAdd ? U"パスワードの追加" : U"パスワードの変更")
-              .draw(popupAddChangePasswordHeadCullBox, Design::fontColor);
-          if (!cnt)
-            FontAsset(U"Regular")(U"パスワード入力が必須です。")
-                .draw(popupAddChangePasswordTextCullBox, Design::fontColor);
-          else if (SimpleGUI::Button(U"決定", ratioPos(0.5, 0.5))) {
-            lastPopupState = popupState;
-            popupState = confirming;
+        if (!passwordText.text.length()) {
+          FontAsset(U"Regular")(U"パスワード入力が必須です。")
+              .draw(popupAddChangePasswordTextCullBox, Design::fontColor);
+        } else if (SimpleGUI::Button(U"決定", ratioPos(0.5, 0.5))) {
+          single_data temp(serviceNameText.text, userNameText.text, passwordText.text);
+          // Array passArray のインデックスは popupIndex
+          if (popupState == forAdd) {  // 追加
+            passArray << temp;
+            noticeType = notice_add;
+          } else if (popupState == forEdit) {  // 変更
+            passArray[popupIndex] = temp;
+            noticeType = notice_edit;
           }
-          if (SimpleGUI::Button(U"キャンセル", ratioPosFromCenter(0.0, min(-0.3, -180. / screenSize.y)),
-                                max(100.0, min(140.0, 0.175 * screenSize.x))))
-            popupState = notPopup;
-        } else {
-          // 再確認
-          RectF(ratioPosFromCenter(0.0, 0.4), ratioPos(0.33, max(0.4, 240. / screenSize.y)))
-              .drawFrame(5, Design::frame);
-          FontAsset(U"Regular")(U"この内容で確定しますか？").draw(repopCheckTextCullBox, Design::fontColor);
-          if (SimpleGUI::ButtonAt(U"はい", ratioPosFromCenter(0.18 + (screenSize.x >= 500 ? 0.0 : 0.16), -0.22), 80)) {
-            single_data temp(serviceNameText.text, userNameText.text, passwordText.text);
-            // Array passArray のインデックスは popupIndex
-            if (lastPopupState == forAdd) {  // 追加
-              passArray << temp;
-              noticeType = notice_add;
-            } else if (lastPopupState == forEdit) {  // 変更
-              passArray[popupIndex] = temp;
-              noticeType = notice_edit;
-            }
 
-            try {
-              Database.write_data(passArray);
-            } catch (Error e) {
-              System::MessageBoxOK(e.what());
-            }
-            popupState = notPopup;
-            noticeTimer = 0.0;
+          try {
+            Database.write_data(passArray);
+          } catch (Error &e) {
+            System::MessageBoxOK(e.what());
           }
-          if (SimpleGUI::ButtonAt(U"いいえ",
-                                  ratioPosFromCenter(0.5 - (screenSize.x >= 500 ? 0.0 : 0.16),
-                                                     -0.22 - (screenSize.x >= 500 ? 0.0 : 0.13)),
-                                  80))
-            popupState = lastPopupState;
+          popupState = notPopup;
+          noticeTimer = 0.0;
+          focused = &serviceNameText;
+        }
+        if (SimpleGUI::Button(U"キャンセル", ratioPosFromCenter(0.0, min(-0.3, -180. / screenSize.y)),
+                              max(100.0, min(140.0, 0.175 * screenSize.x)))) {
+          popupState = notPopup;
+          focused = &serviceNameText;
+        }
+        if (KeyEscape.down()) {
+          popupState = notPopup;
+          focused->active = false;
+          focused = &serviceNameText;
         }
         break;
 
@@ -478,15 +480,16 @@ class MainScene : public App::Scene {
             changeScene(U"CreatePassword", 0.25s);
           } else {
             // Array passArrayのインデックスは popupIndex
-            for (int j = popupIndex; j < passArray.size() - 1; j++)
+            for (size_t j = popupIndex; j < passArray.size() - 1; j++) {
               passArray[j] = passArray[j + 1];  // パスワードの削除処理
+            }
             passArray.pop_back();
             if (passArray.empty()) {
               if (!Database.reset()) System::MessageBoxOK(U"Failed to open the password file.");
             } else {
               try {
                 Database.write_data(passArray);
-              } catch (Error e) {
+              } catch (Error &e) {
                 System::MessageBoxOK(e.what());
               }
             }

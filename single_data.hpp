@@ -26,7 +26,6 @@ class single_data {
   /**
    * @brief コンストラクタ
    *
-   * @param id ID
    * @param service_name サービス名
    * @param user_name ユーザー名
    * @param password パスワード

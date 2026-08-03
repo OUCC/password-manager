@@ -60,7 +60,7 @@ class db {
       Array<single_data> data = read_data(key);
       key = new_passwd;
       write_data(data);
-    } catch (Error e) {
+    } catch (Error &e) {
       return false;
     }
     return true;
@@ -83,7 +83,7 @@ class db {
     if (!reader) throw Error(U"Failed to open `{}`"_fmt(main_db_name));
     Array<single_data> data;
     reader(data);
-    for (int i = 0; i < data.size(); i++) {
+    for (size_t i = 0; i < data.size(); i++) {
       if (!data[i].decrypt(key)) throw Error(U"Wrong password");
     }
     return data;
@@ -101,7 +101,7 @@ class db {
     if (key.empty()) throw db_exception("invalid password");
     Serializer<BinaryWriter> writer(main_db_name);
     if (!writer) throw Error(U"Failed to open `{}`"_fmt(main_db_name));
-    for (int i = 0; i < data.size(); i++) data[i].encrypt(key);
+    for (size_t i = 0; i < data.size(); i++) data[i].encrypt(key);
     writer(data);
   }
 
