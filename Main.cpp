@@ -262,7 +262,8 @@ class MainScene : public App::Scene {
   // 完了通知用
   double noticeTimer = 5.0;
   enum {
-    notice_copy,
+    notice_copy_usr,
+    notice_copy_pwd,
     notice_delete,
     notice_add,
     notice_edit,
@@ -371,15 +372,25 @@ class MainScene : public App::Scene {
       FontAsset(U"Regular")(isVisiblePass ? passArray[scroll.current + i].password : U"*****")
           .draw(passwordTextCullBox, Design::fontColor);
 
-      if (TextureAsset(U"copy").resized(30).draw(screenSize.x - 160, height).mouseOver() && popupState == notPopup) {
+      if (userNameTextCullBox.mouseOver() && popupState == notPopup) {
         Cursor::RequestStyle(CursorStyle::Hand);
         if (MouseL.down()) {
-          Clipboard::SetText(passArray[scroll.current + i].password);  // パスワードのコピー処理
-          noticeType = notice_copy;
+          Clipboard::SetText(passArray[scroll.current + i].user_name);  // ユーザ名のコピー処理
+          noticeType = notice_copy_usr;
           noticeTimer = 0.0;
         }
       }
-      if (TextureAsset(U"edit").resized(30).draw(screenSize.x - 120, height).mouseOver() && popupState == notPopup) {
+      if (passwordTextCullBox.mouseOver() && popupState == notPopup) {
+        Cursor::RequestStyle(CursorStyle::Hand);
+        if (MouseL.down()) {
+          Clipboard::SetText(passArray[scroll.current + i].password);  // パスワードのコピー処理
+          noticeType = notice_copy_pwd;
+          noticeTimer = 0.0;
+        }
+      }
+      if ((TextureAsset(U"edit").resized(30).draw(screenSize.x - 120, height).mouseOver() ||
+           serviceNameTextCullBox.mouseOver()) &&
+          popupState == notPopup) {
         Cursor::RequestStyle(CursorStyle::Hand);
         if (MouseL.down()) {
           popupIndex = scroll.current + i;
@@ -432,10 +443,7 @@ class MainScene : public App::Scene {
         FontAsset(U"Regular")(popupState == forAdd ? U"パスワードの追加" : U"パスワードの変更")
             .draw(popupAddChangePasswordHeadCullBox, Design::fontColor);
 
-        if (!passwordText.text.length()) {
-          FontAsset(U"Regular")(U"パスワード入力が必須です。")
-              .draw(popupAddChangePasswordTextCullBox, Design::fontColor);
-        } else if (SimpleGUI::Button(U"決定", ratioPos(0.5, 0.5))) {
+        if (SimpleGUI::Button(U"決定", ratioPos(0.5, 0.5))) {
           single_data temp(serviceNameText.text, userNameText.text, passwordText.text);
           // Array passArray のインデックスは popupIndex
           if (popupState == forAdd) {  // 追加
@@ -506,12 +514,15 @@ class MainScene : public App::Scene {
     }
 
     int copyNoticeX = (int)((2.5 - abs(noticeTimer - 2.5)) * 300);
-    if (copyNoticeX > 200) copyNoticeX = 200;
-    Rect((int)screenSize.x - copyNoticeX, (int)screenSize.y - 50, 200, 50).draw(Design::fontColor);
+    if (copyNoticeX > 320) copyNoticeX = 320;
+    Rect((int)screenSize.x - copyNoticeX, (int)screenSize.y - 50, 320, 50).draw(Design::fontColor);
     String noticeMessage;
     switch (noticeType) {
-      case notice_copy:
-        noticeMessage = U"コピーしました。";
+      case notice_copy_usr:
+        noticeMessage = U"ユーザー名をコピーしました。";
+        break;
+      case notice_copy_pwd:
+        noticeMessage = U"パスワードをコピーしました。";
         break;
       case notice_delete:
         noticeMessage = U"削除しました。";

@@ -1,5 +1,4 @@
-﻿#include <openssl/aes.h>
-#include <openssl/core_names.h>
+﻿#include <openssl/core_names.h>
 #include <openssl/evp.h>
 #include <openssl/kdf.h>
 #include <openssl/params.h>
@@ -11,7 +10,7 @@
 
 /**
  * @brief 1つの項目のデータを定めた構造体
- * @details パスワードは暗号の状態は16進数文字列、復号された状態では通常の文字列である
+ * @details 各要素は暗号の状態では16進数文字列、復号された状態では通常の文字列である
  *
  */
 class single_data {
@@ -30,7 +29,7 @@ class single_data {
    * @param user_name ユーザー名
    * @param password パスワード
    */
-  single_data(String service_name, String user_name, String password)
+  single_data(const String &service_name, const String &user_name, const String &password)
       : service_name(service_name), user_name(user_name), password(password) {}
 
   /**
@@ -44,65 +43,37 @@ class single_data {
     archive(service_name, user_name, password);
   }
 
-  void encrypt(String master) {
-    string enc_in = password.toUTF8();
-    const int input_len = enc_in.length();
-    auto *enc_out = new unsigned char[SALT_LEN + IV_LEN + input_len + TAG_LEN];
-    auto *salt = enc_out;
-    auto *iv = salt + SALT_LEN;
-    auto *ciphertext = iv + IV_LEN;
-    auto *tag = ciphertext + input_len;
-    unsigned char key[KEY_LEN];
+  void encrypt(const String &master) {
+    string svc_in = service_name.toUTF8();
+    string usr_in = user_name.toUTF8();
+    string pwd_in = password.toUTF8();
+    string strMaster = master.toUTF8();
+
+    unsigned char salt[SALT_LEN], key[KEY_LEN];
     RAND_bytes(salt, SALT_LEN);
-    derive_key(master.toUTF8().c_str(), master.length(), salt, key);
+    derive_key(strMaster.c_str(), strMaster.length(), salt, key);
 
-    int len, ciphertext_len = 0;
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-    RAND_bytes(iv, IV_LEN);
-    EVP_EncryptInit_ex2(ctx, EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr), key, iv, nullptr);
-    EVP_EncryptUpdate(ctx, ciphertext, &len, (const unsigned char *)enc_in.c_str(), input_len);
-    ciphertext_len += len;
-    EVP_EncryptFinal_ex(ctx, ciphertext + ciphertext_len, &len);
-    ciphertext_len += len;
-    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, TAG_LEN, tag);
-    EVP_CIPHER_CTX_free(ctx);
+    service_name = encrypt_string(svc_in, salt, key);
+    user_name = encrypt_string(usr_in, salt, key);
+    password = encrypt_string(pwd_in, salt, key);
     OPENSSL_cleanse(key, sizeof(key));
-
-    password = binary_to_hexstring(enc_out, SALT_LEN + IV_LEN + ciphertext_len + TAG_LEN);
-    delete[] enc_out;
   }
 
-  bool decrypt(String master) {
-    string hex_text_string = password.toUTF8();
-    const int input_len = hex_text_string.length() / 2;
-    auto *dec_in = new unsigned char[input_len];
-    for (int i = 0; i < input_len; i++) {
-      dec_in[i] = (unsigned char)stol(hex_text_string.substr(i * 2, 2), nullptr, 16);
+  bool decrypt(const String &master) {
+    string svc_in = service_name.toUTF8();
+    string usr_in = user_name.toUTF8();
+    string pwd_in = password.toUTF8();
+    string strMaster = master.toUTF8();
+
+    bool result = true;
+    try {
+      service_name = decrypt_string(svc_in, strMaster);
+      user_name = decrypt_string(usr_in, strMaster);
+      password = decrypt_string(pwd_in, strMaster);
+    } catch (db_exception &e) {
+      result = false;
     }
-    int ciphertext_len = input_len - SALT_LEN - IV_LEN - TAG_LEN;
-    auto *salt = dec_in;
-    auto *iv = salt + SALT_LEN;
-    auto *ciphertext = iv + IV_LEN;
-    auto *tag = ciphertext + ciphertext_len;
-    unsigned char key[KEY_LEN];
-    derive_key(master.toUTF8().c_str(), master.length(), salt, key);
-
-    int len, plaintext_len = 0;
-    auto *dec_out = new unsigned char[ciphertext_len];
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-    EVP_DecryptInit_ex2(ctx, EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr), key, iv, nullptr);
-    EVP_DecryptUpdate(ctx, dec_out, &len, ciphertext, ciphertext_len);
-    plaintext_len += len;
-    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, TAG_LEN, (void *)tag);
-    int result = EVP_DecryptFinal_ex(ctx, dec_out + plaintext_len, &len);
-    plaintext_len += len;
-    EVP_CIPHER_CTX_free(ctx);
-    OPENSSL_cleanse(key, sizeof(key));
-    delete[] dec_in;
-
-    if (result == 1) password = Unicode::FromUTF8(string((char *)dec_out));
-    delete[] dec_out;
-    return result == 1;
+    return result;
   }
 
  private:
@@ -129,5 +100,63 @@ class single_data {
     EVP_KDF_derive(ctx, key, KEY_LEN, params);
     EVP_KDF_CTX_free(ctx);
     EVP_KDF_free(kdf);
+  }
+
+  static String encrypt_string(const string &text, const unsigned char *salt, const unsigned char *key) {
+    auto *enc_out = new unsigned char[SALT_LEN + IV_LEN + text.length() + TAG_LEN];
+    memcpy(enc_out, salt, SALT_LEN);
+    auto *iv = enc_out + SALT_LEN;
+    auto *ciphertext = iv + IV_LEN;
+    auto *tag = ciphertext + text.length();
+
+    int len, ciphertext_len = 0;
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    RAND_bytes(iv, IV_LEN);
+    EVP_EncryptInit_ex2(ctx, EVP_aes_256_gcm(), key, iv, nullptr);
+    EVP_EncryptUpdate(ctx, ciphertext, &len, (const unsigned char *)text.c_str(), text.length());
+    ciphertext_len += len;
+    EVP_EncryptFinal_ex(ctx, ciphertext + ciphertext_len, &len);
+    ciphertext_len += len;
+    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, TAG_LEN, tag);
+    EVP_CIPHER_CTX_free(ctx);
+
+    String result = binary_to_hexstring(enc_out, SALT_LEN + IV_LEN + ciphertext_len + TAG_LEN);
+    delete[] enc_out;
+    return result;
+  }
+
+  static String decrypt_string(const string &text, const string &master) {
+    auto *dec_in = new unsigned char[text.length() / 2];
+    for (size_t i = 0; i < text.length() / 2; i++) {
+      dec_in[i] = (unsigned char)stol(text.substr(i * 2, 2), nullptr, 16);
+    }
+    int ciphertext_len = text.length() / 2 - SALT_LEN - IV_LEN - TAG_LEN;
+    auto *iv = dec_in + SALT_LEN;
+    auto *ciphertext = iv + IV_LEN;
+    auto *tag = ciphertext + ciphertext_len;
+    unsigned char key[KEY_LEN];
+    derive_key(master.c_str(), master.length(), dec_in, key);
+
+    int len, plaintext_len = 0;
+    auto *dec_out = new unsigned char[ciphertext_len];
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    EVP_DecryptInit_ex2(ctx, EVP_aes_256_gcm(), key, iv, nullptr);
+    EVP_DecryptUpdate(ctx, dec_out, &len, ciphertext, ciphertext_len);
+    plaintext_len += len;
+    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, TAG_LEN, (void *)tag);
+    int result = EVP_DecryptFinal_ex(ctx, dec_out + plaintext_len, &len);
+    plaintext_len += len;
+    EVP_CIPHER_CTX_free(ctx);
+    OPENSSL_cleanse(key, sizeof(key));
+    delete[] dec_in;
+
+    String plain;
+    if (result == 1) plain = Unicode::FromUTF8(string((char *)dec_out, plaintext_len));
+    delete[] dec_out;
+    if (result == 1) {
+      return plain;
+    } else {
+      throw db_exception("wrong password");
+    }
   }
 };

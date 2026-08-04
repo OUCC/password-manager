@@ -42,7 +42,7 @@ class db {
    * @param passwd 登録するパスワード
    * @exception db_exception パスワードが既に登録されている場合、複数のキーが登録されていた場合
    */
-  void register_passwd(String passwd) { key = passwd; }
+  void register_passwd(const String &passwd) { key = passwd; }
 
   /**
    * @brief PWマネージャーのパスワードを変更する
@@ -55,7 +55,7 @@ class db {
    * @return true 変更前のパスワードが正しく、変更に成功した場合
    * @return false 変更前のパスワードが間違っていて変更に失敗した場合
    */
-  bool change_passwd(String new_passwd) {
+  bool change_passwd(const String &new_passwd) {
     try {
       Array<single_data> data = read_data(key);
       key = new_passwd;
@@ -74,7 +74,7 @@ class db {
    * @exception db_exception まだログインしていない場合
    * @exception Error パスワード誤り／ファイル読み取り不可
    */
-  Array<single_data> read_data(String passwd) {
+  Array<single_data> read_data(const String &passwd) {
     key = passwd;
 
     if (key.empty()) throw db_exception("invalid password");
